@@ -1,12 +1,13 @@
 const express = require("express");
 const {
-  registerUser,
-  loginUser,
-} = require("../controllers/auth.controller");
-const {
   registerValidator,
   loginValidator,
 } = require("../validators/auth.validator");
+const {
+  registerUser,
+  loginUser,
+  logoutUser,
+} = require("../controllers/auth.controller");
 const handleValidationErrors = require("../validators/commonValidator");
 
 const router = express.Router();
@@ -15,14 +16,10 @@ router.post(
   "/register",
   registerValidator,
   handleValidationErrors,
-  registerUser
+  registerUser,
 );
 
-router.post(
-  "/login",
-  loginValidator,
-  handleValidationErrors,
-  loginUser
-);
+router.post("/login", loginValidator, handleValidationErrors, loginUser);
+router.post("/logout", logoutUser);
 
 module.exports = router;
