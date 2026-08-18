@@ -3,6 +3,7 @@ const helmet = require("helmet");
 const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const sanitizeInput = require("./middlewares/sanitizeInput");
 
 const app = express();
 
@@ -32,6 +33,11 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(sanitizeInput);
 
 app.get("/", (req, res) => {
   res.send("Expense Tracker Backend is running!");
