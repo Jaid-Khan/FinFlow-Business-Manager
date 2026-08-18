@@ -43,4 +43,12 @@ app.get("/", (req, res) => {
   res.send("Expense Tracker Backend is running!");
 });
 
+app.get('/api/v1/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = app;
