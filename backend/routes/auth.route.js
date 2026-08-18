@@ -7,6 +7,7 @@ const {
   registerUser,
   loginUser,
   logoutUser,
+  refreshAccessToken,
 } = require("../controllers/auth.controller");
 const handleValidationErrors = require("../validators/commonValidator");
 
@@ -21,5 +22,6 @@ router.post(
 
 router.post("/login", loginValidator, handleValidationErrors, loginUser);
 router.post("/logout", logoutUser);
+router.post("/refresh-token", refreshAccessToken);
 
 module.exports = router;

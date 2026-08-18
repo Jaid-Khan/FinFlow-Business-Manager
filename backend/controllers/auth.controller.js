@@ -54,10 +54,7 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      user.passwordHash
-    );
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -73,7 +70,17 @@ const loginUser = async (req, res) => {
       process.env.JWT_ACCESS_SECRET,
       {
         expiresIn: "15m",
-      }
+      },
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        userId: user._id,
+      },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      },
     );
 
     res.cookie("accessToken", accessToken, {
@@ -81,6 +88,13 @@ const loginUser = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
@@ -125,8 +139,58 @@ const logoutUser = (req, res) => {
   }
 };
 
+const refreshAccessToken = (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token is required",
+      });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+
+    const accessToken = jwt.sign(
+      {
+        userId: decoded.userId,
+      },
+      process.env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite:
+        process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Access token refreshed successfully",
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired refresh token",
+    });
+  }
+};
+
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
+  refreshAccessToken,
 };
