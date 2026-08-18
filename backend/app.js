@@ -4,6 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const sanitizeInput = require("./middlewares/sanitizeInput");
+const authRoutes = require("./routes/auth.route");
 
 const app = express();
 
@@ -50,5 +51,7 @@ app.get('/api/v1/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+app.use("/api/v1/auth", authRoutes);
 
 module.exports = app;
