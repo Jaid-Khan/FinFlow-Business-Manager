@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authenticateUser = require("../middlewares/auth.middleware");
+const requireActiveBusiness = require("../middlewares/business.middleware");
 
 const {
   createBusiness,
@@ -16,7 +17,12 @@ router.post("/", authenticateUser, createBusiness);
 
 router.get("/", authenticateUser, getBusinesses);
 
-router.get("/:id", authenticateUser, getBusinessById);
+router.get(
+  "/:id",
+  authenticateUser,
+  requireActiveBusiness,
+  getBusinessById
+);
 
 router.patch("/:id", authenticateUser, updateBusiness);
 

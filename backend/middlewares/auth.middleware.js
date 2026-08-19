@@ -11,13 +11,11 @@ const authenticateUser = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(
-      accessToken,
-      process.env.JWT_ACCESS_SECRET
-    );
+    const decoded = jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET);
 
     req.user = {
       userId: decoded.userId,
+      businessId: decoded.businessId || null,
     };
 
     next();

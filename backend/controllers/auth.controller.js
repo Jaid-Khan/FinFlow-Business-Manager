@@ -78,6 +78,7 @@ const loginUser = async (req, res) => {
     const refreshToken = jwt.sign(
       {
         userId: user._id,
+        businessId: null,
       },
       process.env.JWT_REFRESH_SECRET,
       {
@@ -155,26 +156,23 @@ const refreshAccessToken = (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET
-    );
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
     const accessToken = jwt.sign(
       {
         userId: decoded.userId,
+        businessId: decoded.businessId || null,
       },
       process.env.JWT_ACCESS_SECRET,
       {
         expiresIn: "15m",
-      }
+      },
     );
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite:
-        process.env.NODE_ENV === "production" ? "none" : "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 15 * 60 * 1000,
     });
 
@@ -219,15 +217,13 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordToken = hashedToken;
 
     // Token valid for 15 minutes
-    user.resetPasswordExpires = new Date(
-      Date.now() + 15 * 60 * 1000
-    );
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
 
     await user.save();
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-await sendPasswordResetEmail(user.email, resetUrl);
+    await sendPasswordResetEmail(user.email, resetUrl);
 
     return res.status(200).json({
       success: true,
@@ -257,10 +253,7 @@ const resetPassword = async (req, res) => {
     }
 
     // Hash the token received from the reset link
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     // Find user with valid and non-expired reset token
     const user = await User.findOne({
