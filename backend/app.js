@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const sanitizeInput = require("./middlewares/sanitizeInput");
 const authRoutes = require("./routes/auth.route");
 const userRoutes = require("./routes/user.route");
+const businessRoutes = require("./routes/business.route");
 
 const app = express();
 
@@ -57,5 +58,6 @@ app.get('/api/v1/health', (req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/businesses", businessRoutes);
 
 module.exports = app;
