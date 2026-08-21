@@ -1,9 +1,24 @@
 const mongoose = require("mongoose");
 const Business = require("../models/Business");
+const Sheet = require("../models/Sheet");
+const {
+  DEFAULT_COLUMNS,
+  INVENTORY_COLUMNS,
+  getBusinessTemplate,
+} = require("../config/businessTemplates");
 
 const createBusiness = async (req, res) => {
   try {
     const { businessName, businessType, address } = req.body;
+
+    const template = getBusinessTemplate(businessType);
+
+    if (!template) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid business type",
+      });
+    }
 
     const business = await Business.create({
       ownerId: req.user.userId,
@@ -11,6 +26,19 @@ const createBusiness = async (req, res) => {
       businessType,
       address,
     });
+
+    const defaultSheets = template.defaultSheets.map((sheetName) => ({
+      userId: req.user.userId,
+      businessId: business._id,
+      name: sheetName,
+      columns:
+        sheetName === "Inventory"
+          ? [...INVENTORY_COLUMNS]
+          : [...DEFAULT_COLUMNS],
+      rows: [],
+    }));
+
+    await Sheet.insertMany(defaultSheets);
 
     return res.status(201).json({
       success: true,

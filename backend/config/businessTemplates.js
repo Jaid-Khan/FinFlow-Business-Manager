@@ -10,6 +10,19 @@ const DEFAULT_COLUMNS = [
   "Updated At",
 ];
 
+const INVENTORY_COLUMNS = [
+  "Item Name",
+  "Category",
+  "Quantity",
+  "Unit",
+  "Purchase Price",
+  "Selling Price",
+  "Supplier",
+  "Low Stock Limit",
+  "Stock Value",
+  "Last Updated",
+];
+
 const BUSINESS_TEMPLATES = {
   "General Business": {
     name: "General Business",
@@ -60,6 +73,7 @@ const getBusinessTemplate = (businessType) => {
 
 module.exports = {
   DEFAULT_COLUMNS,
+  INVENTORY_COLUMNS,
   BUSINESS_TEMPLATES,
   getBusinessTemplate,
 };
