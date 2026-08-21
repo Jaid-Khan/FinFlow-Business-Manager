@@ -8,6 +8,7 @@ const sanitizeInput = require("./middlewares/sanitizeInput");
 const authRoutes = require("./routes/auth.route");
 const userRoutes = require("./routes/user.route");
 const businessRoutes = require("./routes/business.route");
+const sheetRoutes = require("./routes/sheet.route");
 
 const app = express();
 
@@ -16,9 +17,13 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: "https://finflowbusiness.netlify.app",
+    origin: [
+      "https://finflowbusiness.netlify.app",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
     credentials: true,
-  })
+  }),
 );
 
 // Request Logging
@@ -48,16 +53,17 @@ app.get("/", (req, res) => {
   res.send("Expense Tracker Backend is running!");
 });
 
-app.get('/api/v1/health', (req, res) => {
+app.get("/api/v1/health", (req, res) => {
   res.status(200).json({
-    status: 'ok',
-    message: 'Server is healthy',
-    timestamp: new Date().toISOString()
+    status: "ok",
+    message: "Server is healthy",
+    timestamp: new Date().toISOString(),
   });
 });
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/businesses", businessRoutes);
+app.use("/api/v1/sheets", sheetRoutes);
 
 module.exports = app;
