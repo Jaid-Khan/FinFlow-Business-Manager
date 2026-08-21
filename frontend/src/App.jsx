@@ -98,31 +98,24 @@ function App() {
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/users/active-business`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            businessId,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/users/active-business`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          businessId,
+        }),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to select business"
-        );
+        throw new Error(data.message || "Failed to select business");
       }
 
-      setSuccess(
-        `Active business: ${data.business.businessName}`
-      );
+      setSuccess(`Active business: ${data.business.businessName}`);
 
       // Only allow SheetList to render after
       // active business has been successfully set.
@@ -133,9 +126,7 @@ function App() {
       setSelectedBusiness("");
       setIsBusinessReady(false);
 
-      setError(
-        error.message || "Failed to select active business"
-      );
+      setError(error.message || "Failed to select active business");
     }
   };
 
@@ -157,9 +148,7 @@ function App() {
         <div className="mx-auto w-full max-w-7xl">
           <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">
-                ExpenseFlow
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">ExpenseFlow</h1>
 
               <p className="mt-2 text-sm text-gray-500">
                 Select your active business
@@ -189,15 +178,10 @@ function App() {
                   onChange={handleSelectBusiness}
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-gray-500"
                 >
-                  <option value="">
-                    Select a business
-                  </option>
+                  <option value="">Select a business</option>
 
                   {businesses.map((business) => (
-                    <option
-                      key={business._id}
-                      value={business._id}
-                    >
+                    <option key={business._id} value={business._id}>
                       {business.businessName}
                     </option>
                   ))}
@@ -244,7 +228,7 @@ function App() {
                 </button>
               </div>
 
-              <SheetTable sheet={selectedSheet} />
+              <SheetTable key={selectedSheet._id} sheet={selectedSheet} />
             </section>
           )}
         </div>
@@ -256,13 +240,9 @@ function App() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            ExpenseFlow
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">ExpenseFlow</h1>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Sign in to continue
-          </p>
+          <p className="mt-2 text-sm text-gray-500">Sign in to continue</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
