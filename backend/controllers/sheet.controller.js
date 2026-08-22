@@ -5,12 +5,25 @@ const { DEFAULT_SHEET_TEMPLATES } = require("../config/sheetTemplates");
 // Creates the fixed set of default template sheets for a user the
 // first time they have none. Runs lazily from getSheets so the
 // auth/register flow never has to know about sheets.
+
+const createEmptyRows = (columns, count = 5) => {
+  return Array.from({ length: count }, () => {
+    const row = {};
+
+    columns.forEach((column) => {
+      row[column] = "";
+    });
+
+    return row;
+  });
+};
+
 const provisionDefaultSheets = async (userId) => {
   const defaultSheets = DEFAULT_SHEET_TEMPLATES.map((template) => ({
     userId,
     name: template.name,
     columns: [...template.columns],
-    rows: [],
+    rows: createEmptyRows(template.columns, 5),
   }));
 
   await Sheet.insertMany(defaultSheets);
@@ -55,11 +68,18 @@ const createSheet = async (req, res) => {
       });
     }
 
+    const sheetColumns = Array.isArray(columns) ? columns : [];
+
+    const sheetRows =
+      Array.isArray(rows) && rows.length > 0
+        ? rows
+        : createEmptyRows(sheetColumns, 5);
+
     const sheet = await Sheet.create({
       userId: req.user.userId,
       name: name.trim(),
-      columns: Array.isArray(columns) ? columns : [],
-      rows: Array.isArray(rows) ? rows : [],
+      columns: sheetColumns,
+      rows: sheetRows,
     });
 
     return res.status(201).json({
