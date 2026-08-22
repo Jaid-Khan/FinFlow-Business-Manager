@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { updateSheet } from "../../services/sheetService";
 
+import { exportToCsv } from "../../utils/export/exportCsv";
+import { exportToPdf } from "../../utils/export/exportPdf";
+import { exportToExcel } from "../../utils/export/exportExcel";
+
 /*
  * ----------------------------------------
  * DATE HELPERS
@@ -93,29 +97,10 @@ function DatePicker({
   );
 
   const [visibleMonth, setVisibleMonth] = useState(
-    new Date(
-      initialDate.getFullYear(),
-      initialDate.getMonth(),
-      1,
-    ),
+    new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
   );
 
   const pickerRef = useRef(null);
-
-  /*
-   * ----------------------------------------
-   * CALENDAR POSITION
-   * ----------------------------------------
-   *
-   * Calendar center is aligned with the
-   * selected cell's vertical center.
-   *
-   * Default:
-   *   Open on RIGHT side.
-   *
-   * If there isn't enough room:
-   *   Open on LEFT side.
-   */
 
   const CALENDAR_WIDTH = 260;
   const CALENDAR_HEIGHT = 330;
@@ -127,40 +112,18 @@ function DatePicker({
 
   if (anchorRect) {
     if (placement === "right") {
-      /*
-       * The calendar's center is aligned
-       * near the right edge of the cell.
-       */
       calendarLeft =
-        anchorRect.right -
-        CALENDAR_WIDTH / 2 +
-        GAP;
+        anchorRect.right - CALENDAR_WIDTH / 2 + GAP;
     } else {
-      /*
-       * The calendar's center is aligned
-       * near the left edge of the cell.
-       */
       calendarLeft =
-        anchorRect.left -
-        CALENDAR_WIDTH / 2 -
-        GAP;
+        anchorRect.left - CALENDAR_WIDTH / 2 - GAP;
     }
 
-    /*
-     * Vertical center of calendar =
-     * vertical center of selected cell.
-     */
     calendarTop =
       anchorRect.top +
       anchorRect.height / 2 -
       CALENDAR_HEIGHT / 2;
   }
-
-  /*
-   * ----------------------------------------
-   * VIEWPORT BOUNDARY PROTECTION
-   * ----------------------------------------
-   */
 
   if (typeof window !== "undefined") {
     const maxLeft =
@@ -209,10 +172,7 @@ function DatePicker({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "keydown",
-        handleKeyDown,
-      );
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [selectedDate, onCancel, onConfirm]);
 
@@ -232,10 +192,7 @@ function DatePicker({
       }
     };
 
-    document.addEventListener(
-      "mousedown",
-      handleOutsideClick,
-    );
+    document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
       document.removeEventListener(
@@ -244,12 +201,6 @@ function DatePicker({
       );
     };
   }, [onCancel]);
-
-  /*
-   * ----------------------------------------
-   * MONTH DATA
-   * ----------------------------------------
-   */
 
   const currentYear = visibleMonth.getFullYear();
   const currentMonth = visibleMonth.getMonth();
@@ -277,21 +228,13 @@ function DatePicker({
 
   const handlePreviousMonth = () => {
     setVisibleMonth(
-      new Date(
-        currentYear,
-        currentMonth - 1,
-        1,
-      ),
+      new Date(currentYear, currentMonth - 1, 1),
     );
   };
 
   const handleNextMonth = () => {
     setVisibleMonth(
-      new Date(
-        currentYear,
-        currentMonth + 1,
-        1,
-      ),
+      new Date(currentYear, currentMonth + 1, 1),
     );
   };
 
@@ -304,9 +247,8 @@ function DatePicker({
   const handleToday = () => {
     const todayDate = new Date();
 
-    const todayString = formatDateForInput(
-      todayDate,
-    );
+    const todayString =
+      formatDateForInput(todayDate);
 
     setSelectedDate(todayString);
 
@@ -325,22 +267,21 @@ function DatePicker({
    * ----------------------------------------
    */
 
-const handleDateSelect = (date) => {
-  if (!date) {
-    return;
-  }
+  const handleDateSelect = (date) => {
+    if (!date) {
+      return;
+    }
 
-  const dateString = formatDateForInput(date);
+    const dateString = formatDateForInput(date);
 
-  setSelectedDate(dateString);
+    setSelectedDate(dateString);
 
-  // Date select hote hi immediately confirm
-  onConfirm(dateString);
-};
+    onConfirm(dateString);
+  };
 
   /*
    * ----------------------------------------
-   * DONE
+   * RENDER
    * ----------------------------------------
    */
 
@@ -352,9 +293,7 @@ const handleDateSelect = (date) => {
         left: `${calendarLeft}px`,
         top: `${calendarTop}px`,
       }}
-      onClick={(event) =>
-        event.stopPropagation()
-      }
+      onClick={(event) => event.stopPropagation()}
     >
       {/* HEADER */}
 
@@ -385,22 +324,16 @@ const handleDateSelect = (date) => {
       {/* WEEK DAYS */}
 
       <div className="mb-1 grid grid-cols-7">
-        {[
-          "Su",
-          "Mo",
-          "Tu",
-          "We",
-          "Th",
-          "Fr",
-          "Sa",
-        ].map((day) => (
-          <div
-            key={day}
-            className="py-1 text-center text-[11px] font-medium text-gray-400"
-          >
-            {day}
-          </div>
-        ))}
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(
+          (day) => (
+            <div
+              key={day}
+              className="py-1 text-center text-[11px] font-medium text-gray-400"
+            >
+              {day}
+            </div>
+          ),
+        )}
       </div>
 
       {/* CALENDAR */}
@@ -459,13 +392,13 @@ const handleDateSelect = (date) => {
           Today
         </button>
 
-      <button
-  type="button"
-  onClick={onCancel}
-  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
->
-  Cancel
-</button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          Cancel
+        </button>
       </div>
 
       <p className="mt-2 text-center text-[10px] text-gray-400">
@@ -512,10 +445,11 @@ function SheetTable({ sheet }) {
   const [contextMenu, setContextMenu] =
     useState(null);
 
+  const [isExportMenuOpen, setIsExportMenuOpen] =
+    useState(false);
+
   /*
-   * ----------------------------------------
    * DATE PICKER STATE
-   * ----------------------------------------
    */
 
   const [activeDateCell, setActiveDateCell] =
@@ -525,16 +459,17 @@ function SheetTable({ sheet }) {
     useState(null);
 
   const contextMenuRef = useRef(null);
+  const exportMenuRef = useRef(null);
   const autosaveTimerRef = useRef(null);
   const isMountedRef = useRef(true);
+
+  const sheetId = sheet?._id;
 
   /*
    * ----------------------------------------
    * AUTOSAVE
    * ----------------------------------------
    */
-
-  const sheetId = sheet?._id;
 
   const saveSheet = useCallback(
     async (columnsToSave, rowsToSave) => {
@@ -561,7 +496,10 @@ function SheetTable({ sheet }) {
 
         setSuccess("Saved");
       } catch (error) {
-        console.error("Save sheet error:", error);
+        console.error(
+          "Save sheet error:",
+          error,
+        );
 
         if (!isMountedRef.current) {
           return;
@@ -597,7 +535,10 @@ function SheetTable({ sheet }) {
         window.setTimeout(() => {
           autosaveTimerRef.current = null;
 
-          saveSheet(nextColumns, nextRows);
+          saveSheet(
+            nextColumns,
+            nextRows,
+          );
         }, 1500);
     },
     [saveSheet],
@@ -625,7 +566,7 @@ function SheetTable({ sheet }) {
 
   /*
    * ----------------------------------------
-   * CONTEXT MENU
+   * CONTEXT MENU + EXPORT MENU
    * ----------------------------------------
    */
 
@@ -637,6 +578,20 @@ function SheetTable({ sheet }) {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
         setContextMenu(null);
+        setIsExportMenuOpen(false);
+      }
+    };
+
+    const handleExportOutsideClick = (
+      event,
+    ) => {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(
+          event.target,
+        )
+      ) {
+        setIsExportMenuOpen(false);
       }
     };
 
@@ -650,6 +605,11 @@ function SheetTable({ sheet }) {
       handleEscape,
     );
 
+    document.addEventListener(
+      "mousedown",
+      handleExportOutsideClick,
+    );
+
     return () => {
       document.removeEventListener(
         "click",
@@ -659,6 +619,11 @@ function SheetTable({ sheet }) {
       document.removeEventListener(
         "keydown",
         handleEscape,
+      );
+
+      document.removeEventListener(
+        "mousedown",
+        handleExportOutsideClick,
       );
     };
   }, []);
@@ -675,7 +640,8 @@ function SheetTable({ sheet }) {
    */
 
   const isDateColumn = (columnName) =>
-    columnName.trim().toLowerCase() === "date";
+    columnName.trim().toLowerCase() ===
+    "date";
 
   const handleOpenDatePicker = (
     rowIndex,
@@ -687,22 +653,13 @@ function SheetTable({ sheet }) {
 
     let anchorRect = null;
 
-    /*
-     * When opened by clicking the actual
-     * date cell, use currentTarget.
-     */
     if (event?.currentTarget) {
       anchorRect =
         event.currentTarget.getBoundingClientRect();
     } else {
-      /*
-       * When opened through "Edit Row",
-       * find the Date cell directly.
-       */
-      const selector =
-        `[data-row-index="${rowIndex}"][data-column-name="${CSS.escape(
-          columnName,
-        )}"]`;
+      const selector = `[data-row-index="${rowIndex}"][data-column-name="${CSS.escape(
+        columnName,
+      )}"]`;
 
       const element =
         document.querySelector(selector);
@@ -721,23 +678,14 @@ function SheetTable({ sheet }) {
     const gap = 8;
     const viewportPadding = 8;
 
-    /*
-     * Calculate the position if the calendar
-     * opens on the RIGHT.
-     */
     const rightCalendarLeft =
       anchorRect.right -
       calendarWidth / 2 +
       gap;
 
     const rightCalendarRight =
-      rightCalendarLeft +
-      calendarWidth;
+      rightCalendarLeft + calendarWidth;
 
-    /*
-     * Check whether the complete calendar
-     * fits on the right side of viewport.
-     */
     const hasEnoughSpaceOnRight =
       rightCalendarLeft >=
         viewportPadding &&
@@ -745,9 +693,6 @@ function SheetTable({ sheet }) {
         window.innerWidth -
           viewportPadding;
 
-    /*
-     * If right doesn't fit, use LEFT.
-     */
     const placement =
       hasEnoughSpaceOnRight
         ? "right"
@@ -786,7 +731,7 @@ function SheetTable({ sheet }) {
 
   /*
    * ----------------------------------------
-   * COLUMN CONTEXT MENU
+   * CONTEXT MENU
    * ----------------------------------------
    */
 
@@ -837,7 +782,10 @@ function SheetTable({ sheet }) {
       newRow[column] = "";
     });
 
-    const updatedRows = [...rows, newRow];
+    const updatedRows = [
+      ...rows,
+      newRow,
+    ];
 
     setRows(updatedRows);
 
@@ -874,7 +822,9 @@ function SheetTable({ sheet }) {
     );
   };
 
-  const handleDeleteRow = (rowIndex) => {
+  const handleDeleteRow = (
+    rowIndex,
+  ) => {
     const updatedRows = rows.filter(
       (_, index) => index !== rowIndex,
     );
@@ -890,7 +840,9 @@ function SheetTable({ sheet }) {
     );
   };
 
-  const handleEditRow = (rowIndex) => {
+  const handleEditRow = (
+    rowIndex,
+  ) => {
     closeContextMenu();
     clearMessages();
 
@@ -900,10 +852,6 @@ function SheetTable({ sheet }) {
       return;
     }
 
-    /*
-     * If first column is Date, open the
-     * date picker instead of normal input.
-     */
     if (isDateColumn(firstColumn)) {
       handleOpenDatePicker(
         rowIndex,
@@ -913,11 +861,12 @@ function SheetTable({ sheet }) {
       return;
     }
 
-    const rowInput = document.querySelector(
-      `[data-row-index="${rowIndex}"][data-column-name="${CSS.escape(
-        firstColumn,
-      )}"]`,
-    );
+    const rowInput =
+      document.querySelector(
+        `[data-row-index="${rowIndex}"][data-column-name="${CSS.escape(
+          firstColumn,
+        )}"]`,
+      );
 
     if (rowInput) {
       rowInput.focus();
@@ -935,7 +884,9 @@ function SheetTable({ sheet }) {
     columnIndex,
   ) => {
     setEditingColumn(columnIndex);
-    setColumnName(columns[columnIndex]);
+    setColumnName(
+      columns[columnIndex],
+    );
 
     clearMessages();
     closeContextMenu();
@@ -949,7 +900,8 @@ function SheetTable({ sheet }) {
   const handleSaveColumnEdit = (
     columnIndex,
   ) => {
-    const trimmedName = columnName.trim();
+    const trimmedName =
+      columnName.trim();
 
     if (!trimmedName) {
       setError(
@@ -961,12 +913,13 @@ function SheetTable({ sheet }) {
       return;
     }
 
-    const duplicate = columns.some(
-      (column, index) =>
-        index !== columnIndex &&
-        column.toLowerCase() ===
-          trimmedName.toLowerCase(),
-    );
+    const duplicate =
+      columns.some(
+        (column, index) =>
+          index !== columnIndex &&
+          column.toLowerCase() ===
+            trimmedName.toLowerCase(),
+      );
 
     if (duplicate) {
       setError(
@@ -981,27 +934,36 @@ function SheetTable({ sheet }) {
     const oldColumnName =
       columns[columnIndex];
 
-    const updatedColumns = columns.map(
-      (column, index) =>
-        index === columnIndex
-          ? trimmedName
-          : column,
-    );
+    const updatedColumns =
+      columns.map(
+        (column, index) =>
+          index === columnIndex
+            ? trimmedName
+            : column,
+      );
 
-    const updatedRows = rows.map((row) => {
-      const updatedRow = {};
+    const updatedRows =
+      rows.map((row) => {
+        const updatedRow = {};
 
-      Object.keys(row).forEach((key) => {
-        if (key === oldColumnName) {
-          updatedRow[trimmedName] =
-            row[key];
-        } else {
-          updatedRow[key] = row[key];
-        }
+        Object.keys(row).forEach(
+          (key) => {
+            if (
+              key ===
+              oldColumnName
+            ) {
+              updatedRow[
+                trimmedName
+              ] = row[key];
+            } else {
+              updatedRow[key] =
+                row[key];
+            }
+          },
+        );
+
+        return updatedRow;
       });
-
-      return updatedRow;
-    });
 
     setColumns(updatedColumns);
     setRows(updatedRows);
@@ -1031,11 +993,12 @@ function SheetTable({ sheet }) {
       return;
     }
 
-    const duplicate = columns.some(
-      (column) =>
-        column.toLowerCase() ===
-        trimmedName.toLowerCase(),
-    );
+    const duplicate =
+      columns.some(
+        (column) =>
+          column.toLowerCase() ===
+          trimmedName.toLowerCase(),
+      );
 
     if (duplicate) {
       setError(
@@ -1052,10 +1015,11 @@ function SheetTable({ sheet }) {
       trimmedName,
     ];
 
-    const updatedRows = rows.map((row) => ({
-      ...row,
-      [trimmedName]: "",
-    }));
+    const updatedRows =
+      rows.map((row) => ({
+        ...row,
+        [trimmedName]: "",
+      }));
 
     setColumns(updatedColumns);
     setRows(updatedRows);
@@ -1093,30 +1057,30 @@ function SheetTable({ sheet }) {
           index !== columnIndex,
       );
 
-    const updatedRows = rows.map((row) => {
-      const updatedRow = {
-        ...row,
-      };
+    const updatedRows =
+      rows.map((row) => {
+        const updatedRow = {
+          ...row,
+        };
 
-      delete updatedRow[columnToDelete];
+        delete updatedRow[
+          columnToDelete
+        ];
 
-      return updatedRow;
-    });
+        return updatedRow;
+      });
 
     setColumns(updatedColumns);
     setRows(updatedRows);
 
     if (
-      editingColumn === columnIndex
+      editingColumn ===
+      columnIndex
     ) {
       setEditingColumn(null);
       setColumnName("");
     }
 
-    /*
-     * Close date picker if its column
-     * has just been deleted.
-     */
     if (
       activeDateCell?.columnName ===
       columnToDelete
@@ -1155,7 +1119,9 @@ function SheetTable({ sheet }) {
     );
   };
 
-  const handleColumnDragOver = (event) => {
+  const handleColumnDragOver = (
+    event,
+  ) => {
     event.preventDefault();
 
     event.dataTransfer.dropEffect =
@@ -1175,7 +1141,8 @@ function SheetTable({ sheet }) {
     }
 
     if (
-      draggedColumnIndex === targetIndex
+      draggedColumnIndex ===
+      targetIndex
     ) {
       setDraggedColumnIndex(null);
 
@@ -1198,8 +1165,8 @@ function SheetTable({ sheet }) {
       movedColumn,
     );
 
-    const reorderedRows = rows.map(
-      (row) => {
+    const reorderedRows =
+      rows.map((row) => {
         const reorderedRow = {};
 
         reorderedColumns.forEach(
@@ -1210,8 +1177,7 @@ function SheetTable({ sheet }) {
         );
 
         return reorderedRow;
-      },
-    );
+      });
 
     setColumns(reorderedColumns);
     setRows(reorderedRows);
@@ -1250,7 +1216,9 @@ function SheetTable({ sheet }) {
     );
   };
 
-  const handleRowDragOver = (event) => {
+  const handleRowDragOver = (
+    event,
+  ) => {
     event.preventDefault();
 
     event.dataTransfer.dropEffect =
@@ -1270,14 +1238,17 @@ function SheetTable({ sheet }) {
     }
 
     if (
-      draggedRowIndex === targetIndex
+      draggedRowIndex ===
+      targetIndex
     ) {
       setDraggedRowIndex(null);
 
       return;
     }
 
-    const reorderedRows = [...rows];
+    const reorderedRows = [
+      ...rows,
+    ];
 
     const [movedRow] =
       reorderedRows.splice(
@@ -1325,6 +1296,90 @@ function SheetTable({ sheet }) {
       columns,
       rows,
     );
+  };
+
+  /*
+   * ----------------------------------------
+   * EXPORT
+   * ----------------------------------------
+   */
+
+  const handleExportPdf = () => {
+    try {
+      setError("");
+
+      exportToPdf(
+        sheet.name,
+        columns,
+        rows,
+      );
+
+      setIsExportMenuOpen(false);
+    } catch (error) {
+      console.error(
+        "Export PDF error:",
+        error,
+      );
+
+      setError(
+        error.message ||
+          "Failed to export PDF.",
+      );
+
+      setSuccess("");
+    }
+  };
+
+  const handleExportCsv = () => {
+    try {
+      setError("");
+
+      exportToCsv(
+        sheet.name,
+        columns,
+        rows,
+      );
+
+      setIsExportMenuOpen(false);
+    } catch (error) {
+      console.error(
+        "Export CSV error:",
+        error,
+      );
+
+      setError(
+        error.message ||
+          "Failed to export CSV.",
+      );
+
+      setSuccess("");
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      setError("");
+
+      exportToExcel(
+        sheet.name,
+        columns,
+        rows,
+      );
+
+      setIsExportMenuOpen(false);
+    } catch (error) {
+      console.error(
+        "Export Excel error:",
+        error,
+      );
+
+      setError(
+        error.message ||
+          "Failed to export Excel.",
+      );
+
+      setSuccess("");
+    }
   };
 
   /*
@@ -1393,15 +1448,14 @@ function SheetTable({ sheet }) {
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100">
                   !
                 </span>
-
                 Save failed
               </span>
-            ) : success === "Saved" ? (
+            ) : success ===
+              "Saved" ? (
               <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-bold">
                   ✓
                 </span>
-
                 Saved
               </span>
             ) : (
@@ -1409,11 +1463,12 @@ function SheetTable({ sheet }) {
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-xs">
                   •
                 </span>
-
                 Unsaved changes
               </span>
             )}
           </div>
+
+          {/* ADD ROW */}
 
           <button
             type="button"
@@ -1423,9 +1478,81 @@ function SheetTable({ sheet }) {
             + Add Row
           </button>
 
+          {/* EXPORT DROPDOWN */}
+
+          <div
+            ref={exportMenuRef}
+            className="relative"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setIsExportMenuOpen(
+                  (previous) =>
+                    !previous,
+                )
+              }
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              aria-haspopup="menu"
+              aria-expanded={
+                isExportMenuOpen
+              }
+            >
+              Export
+
+              <span
+                className={`text-xs transition-transform ${
+                  isExportMenuOpen
+                    ? "rotate-180"
+                    : ""
+                }`}
+              >
+                ▼
+              </span>
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="absolute right-0 z-40 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={
+                    handleExportPdf
+                  }
+                  className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+                >
+                  Export as PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleExportCsv
+                  }
+                  className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+                >
+                  Export as CSV
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleExportExcel
+                  }
+                  className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+                >
+                  Export as Excel
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MANUAL SAVE */}
+
           <button
             type="button"
-            onClick={handleSaveChanges}
+            onClick={
+              handleSaveChanges
+            }
             disabled={isSaving}
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -1450,7 +1577,9 @@ function SheetTable({ sheet }) {
           placeholder="Enter new column name"
           className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-gray-500"
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
+            if (
+              event.key === "Enter"
+            ) {
               handleAddColumn();
             }
           }}
@@ -1494,13 +1623,17 @@ function SheetTable({ sheet }) {
                       editingColumn !==
                       columnIndex
                     }
-                    onContextMenu={(event) =>
+                    onContextMenu={(
+                      event,
+                    ) =>
                       handleColumnContextMenu(
                         event,
                         columnIndex,
                       )
                     }
-                    onDragStart={(event) =>
+                    onDragStart={(
+                      event,
+                    ) =>
                       handleColumnDragStart(
                         event,
                         columnIndex,
@@ -1531,16 +1664,23 @@ function SheetTable({ sheet }) {
                       <div className="flex min-w-35 flex-col gap-2">
                         <input
                           type="text"
-                          value={columnName}
-                          onChange={(event) =>
+                          value={
+                            columnName
+                          }
+                          onChange={(
+                            event,
+                          ) =>
                             setColumnName(
-                              event.target
+                              event
+                                .target
                                 .value,
                             )
                           }
                           autoFocus
                           className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-normal outline-none focus:border-gray-500"
-                          onKeyDown={(event) => {
+                          onKeyDown={(
+                            event,
+                          ) => {
                             if (
                               event.key ===
                               "Enter"
@@ -1601,7 +1741,9 @@ function SheetTable({ sheet }) {
                   <tr
                     key={rowIndex}
                     draggable
-                    onDragStart={(event) =>
+                    onDragStart={(
+                      event,
+                    ) =>
                       handleRowDragStart(
                         event,
                         rowIndex,
@@ -1627,7 +1769,9 @@ function SheetTable({ sheet }) {
                     }`}
                   >
                     <td
-                      onContextMenu={(event) =>
+                      onContextMenu={(
+                        event,
+                      ) =>
                         handleRowContextMenu(
                           event,
                           rowIndex,
@@ -1648,30 +1792,34 @@ function SheetTable({ sheet }) {
                     </td>
 
                     {columns.map(
-                      (columnName) => {
+                      (
+                        columnName,
+                      ) => {
                         const isDate =
                           isDateColumn(
                             columnName,
                           );
 
                         const isActiveDateCell =
-                          activeDateCell
-                            ?.rowIndex ===
+                          activeDateCell?.rowIndex ===
                             rowIndex &&
-                          activeDateCell
-                            ?.columnName ===
+                          activeDateCell?.columnName ===
                             columnName;
 
                         return (
                           <td
-                            key={columnName}
+                            key={
+                              columnName
+                            }
                             className="relative border-b border-r border-gray-200 p-0"
                           >
                             {isDate ? (
                               <>
                                 <button
                                   type="button"
-                                  draggable={false}
+                                  draggable={
+                                    false
+                                  }
                                   data-row-index={
                                     rowIndex
                                   }
@@ -1845,13 +1993,14 @@ function SheetTable({ sheet }) {
       </div>
 
       <p className="mt-3 text-xs text-gray-500">
-        Changes are automatically saved after
-        1.5 seconds. You can also manually save
-        using "Save Changes". Drag column
-        headers left/right to reorder columns.
-        Drag rows up/down to reorder rows.
-        Right-click a column or row for
-        available actions.
+        Changes are automatically saved
+        after 1.5 seconds. You can also
+        manually save using "Save Changes".
+        Drag column headers left/right to
+        reorder columns. Drag rows up/down
+        to reorder rows. Right-click a
+        column or row for available
+        actions.
       </p>
 
       {/* CONTEXT MENU */}
@@ -1897,8 +2046,7 @@ function SheetTable({ sheet }) {
             </>
           )}
 
-          {contextMenu.type ===
-            "row" && (
+          {contextMenu.type === "row" && (
             <>
               <button
                 type="button"
