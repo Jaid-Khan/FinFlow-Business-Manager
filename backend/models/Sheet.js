@@ -9,13 +9,6 @@ const sheetSchema = new mongoose.Schema(
       index: true,
     },
 
-    businessId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Business",
-      required: true,
-      index: true,
-    },
-
     name: {
       type: String,
       required: true,

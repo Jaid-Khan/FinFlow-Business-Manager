@@ -6,15 +6,15 @@ import "./index.css";
 
 import App from "./App";
 import AuthProvider from "./context/AuthContext";
-import BusinessProvider from "./context/BusinessContext";
+import SheetsProvider from "./context/SheetsContext";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <BusinessProvider>
+        <SheetsProvider>
           <App />
-        </BusinessProvider>
+        </SheetsProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

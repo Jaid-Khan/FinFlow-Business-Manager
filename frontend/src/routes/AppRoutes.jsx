@@ -8,13 +8,13 @@ import ResetPassword from "../pages/auth/ResetPassword";
 import Home from "../pages/home/Home";
 import Profile from "../pages/profile/Profile";
 
-import Businesses from "../pages/business/Businesses";
-import CreateBusiness from "../pages/business/CreateBusiness";
-import EditBusiness from "../pages/business/EditBusiness";
+import SheetDetail from "../pages/sheets/SheetDetail";
+import CreateSheet from "../pages/sheets/CreateSheet";
 
 import NotFound from "../pages/NotFound";
 
 import ProtectedRoute from "./ProtectedRoute";
+import AppLayout from "../components/layout/AppLayout";
 
 function AppRoutes() {
   return (
@@ -30,15 +30,13 @@ function AppRoutes() {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
 
-        <Route path="/businesses" element={<Businesses />} />
-        <Route path="/businesses/new" element={<CreateBusiness />} />
-        <Route
-          path="/businesses/:id/edit"
-          element={<EditBusiness />}
-        />
+          <Route path="/sheets/new" element={<CreateSheet />} />
+          <Route path="/sheets/:sheetId" element={<SheetDetail />} />
+        </Route>
       </Route>
 
       {/* 404 */}

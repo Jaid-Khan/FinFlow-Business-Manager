@@ -1,7 +1,6 @@
 const express = require("express");
 
 const authenticateUser = require("../middlewares/auth.middleware");
-const requireActiveBusiness = require("../middlewares/business.middleware");
 
 const {
   getSheets,
@@ -13,39 +12,14 @@ const {
 
 const router = express.Router();
 
-router.get(
-  "/",
-  authenticateUser,
-  requireActiveBusiness,
-  getSheets
-);
+router.get("/", authenticateUser, getSheets);
 
-router.post(
-  "/",
-  authenticateUser,
-  requireActiveBusiness,
-  createSheet
-);
+router.post("/", authenticateUser, createSheet);
 
-router.get(
-  "/:id",
-  authenticateUser,
-  requireActiveBusiness,
-  getSheetById
-);
+router.get("/:id", authenticateUser, getSheetById);
 
-router.patch(
-  "/:id",
-  authenticateUser,
-  requireActiveBusiness,
-  updateSheet
-);
+router.patch("/:id", authenticateUser, updateSheet);
 
-router.delete(
-  "/:id",
-  authenticateUser,
-  requireActiveBusiness,
-  deleteSheet
-);
+router.delete("/:id", authenticateUser, deleteSheet);
 
 module.exports = router;

@@ -1,11 +1,33 @@
 const mongoose = require("mongoose");
 const Sheet = require("../models/Sheet");
+const { DEFAULT_SHEET_TEMPLATES } = require("../config/sheetTemplates");
+
+// Creates the fixed set of default template sheets for a user the
+// first time they have none. Runs lazily from getSheets so the
+// auth/register flow never has to know about sheets.
+const provisionDefaultSheets = async (userId) => {
+  const defaultSheets = DEFAULT_SHEET_TEMPLATES.map((template) => ({
+    userId,
+    name: template.name,
+    columns: [...template.columns],
+    rows: [],
+  }));
+
+  await Sheet.insertMany(defaultSheets);
+};
 
 const getSheets = async (req, res) => {
   try {
+    const existingCount = await Sheet.countDocuments({
+      userId: req.user.userId,
+    });
+
+    if (existingCount === 0) {
+      await provisionDefaultSheets(req.user.userId);
+    }
+
     const sheets = await Sheet.find({
       userId: req.user.userId,
-      businessId: req.business._id,
     }).sort({ createdAt: 1 });
 
     return res.status(200).json({
@@ -35,7 +57,6 @@ const createSheet = async (req, res) => {
 
     const sheet = await Sheet.create({
       userId: req.user.userId,
-      businessId: req.business._id,
       name: name.trim(),
       columns: Array.isArray(columns) ? columns : [],
       rows: Array.isArray(rows) ? rows : [],
@@ -77,7 +98,6 @@ const getSheetById = async (req, res) => {
     const sheet = await Sheet.findOne({
       _id: id,
       userId: req.user.userId,
-      businessId: req.business._id,
     });
 
     if (!sheet) {
@@ -116,7 +136,6 @@ const updateSheet = async (req, res) => {
     const sheet = await Sheet.findOne({
       _id: id,
       userId: req.user.userId,
-      businessId: req.business._id,
     });
 
     if (!sheet) {
@@ -197,7 +216,6 @@ const deleteSheet = async (req, res) => {
     const sheet = await Sheet.findOneAndDelete({
       _id: id,
       userId: req.user.userId,
-      businessId: req.business._id,
     });
 
     if (!sheet) {
