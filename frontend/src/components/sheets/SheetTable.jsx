@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { updateSheet } from "../../services/sheetService";
 
 function SheetTable({ sheet }) {
   const [columns, setColumns] = useState(sheet.columns || []);
@@ -8,7 +8,7 @@ function SheetTable({ sheet }) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState("Saved");
 
   const [editingColumn, setEditingColumn] = useState(null);
   const [columnName, setColumnName] = useState("");
@@ -20,6 +20,101 @@ function SheetTable({ sheet }) {
   const [contextMenu, setContextMenu] = useState(null);
 
   const contextMenuRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  /*
+   * -----------------------------
+   * AUTOSAVE
+   * -----------------------------
+   */
+
+  const sheetId = sheet?._id;
+
+  const saveSheet = useCallback(
+    async (columnsToSave, rowsToSave) => {
+      if (!sheetId) {
+        return;
+      }
+
+      setIsSaving(true);
+      setError("");
+      setSuccess("");
+
+      try {
+        const data = await updateSheet(sheetId, {
+          columns: columnsToSave,
+          rows: rowsToSave,
+        });
+
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setColumns(data.sheet.columns || []);
+        setRows(data.sheet.rows || []);
+
+        // Keep Saved status visible permanently
+        setSuccess("Saved");
+      } catch (error) {
+        console.error("Save sheet error:", error);
+
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setError(error.message || "Failed to save sheet changes");
+        setSuccess("");
+      } finally {
+        if (isMountedRef.current) {
+          setIsSaving(false);
+        }
+      }
+    },
+    [sheetId],
+  );
+
+  const scheduleAutosave = useCallback(
+    (nextColumns, nextRows) => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+
+      setError("");
+      setSuccess("");
+
+      autosaveTimerRef.current = window.setTimeout(() => {
+        autosaveTimerRef.current = null;
+
+        saveSheet(nextColumns, nextRows);
+      }, 1500);
+    },
+    [saveSheet],
+  );
+
+  /*
+   * -----------------------------
+   * COMPONENT MOUNT / CLEANUP
+   * -----------------------------
+   */
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  /*
+   * -----------------------------
+   * CONTEXT MENU
+   * -----------------------------
+   */
 
   useEffect(() => {
     const handleDocumentClick = () => {
@@ -45,10 +140,6 @@ function SheetTable({ sheet }) {
     setError("");
     setSuccess("");
   };
-
-  // -----------------------------
-  // CONTEXT MENU
-  // -----------------------------
 
   const handleColumnContextMenu = (event, columnIndex) => {
     event.preventDefault();
@@ -78,9 +169,11 @@ function SheetTable({ sheet }) {
     setContextMenu(null);
   };
 
-  // -----------------------------
-  // ROW OPERATIONS
-  // -----------------------------
+  /*
+   * -----------------------------
+   * ROW OPERATIONS
+   * -----------------------------
+   */
 
   const handleAddRow = () => {
     const newRow = {};
@@ -89,32 +182,41 @@ function SheetTable({ sheet }) {
       newRow[column] = "";
     });
 
-    setRows((currentRows) => [...currentRows, newRow]);
+    const updatedRows = [...rows, newRow];
+
+    setRows(updatedRows);
+
     clearMessages();
+
+    scheduleAutosave(columns, updatedRows);
   };
 
   const handleCellChange = (rowIndex, columnName, value) => {
-    setRows((currentRows) =>
-      currentRows.map((row, index) =>
-        index === rowIndex
-          ? {
-              ...row,
-              [columnName]: value,
-            }
-          : row
-      )
+    const updatedRows = rows.map((row, index) =>
+      index === rowIndex
+        ? {
+            ...row,
+            [columnName]: value,
+          }
+        : row,
     );
 
+    setRows(updatedRows);
+
     clearMessages();
+
+    scheduleAutosave(columns, updatedRows);
   };
 
   const handleDeleteRow = (rowIndex) => {
-    setRows((currentRows) =>
-      currentRows.filter((_, index) => index !== rowIndex)
-    );
+    const updatedRows = rows.filter((_, index) => index !== rowIndex);
+
+    setRows(updatedRows);
 
     clearMessages();
     closeContextMenu();
+
+    scheduleAutosave(columns, updatedRows);
   };
 
   const handleEditRow = (rowIndex) => {
@@ -129,8 +231,8 @@ function SheetTable({ sheet }) {
 
     const rowInput = document.querySelector(
       `[data-row-index="${rowIndex}"][data-column-name="${CSS.escape(
-        firstColumn
-      )}"]`
+        firstColumn,
+      )}"]`,
     );
 
     if (rowInput) {
@@ -139,9 +241,11 @@ function SheetTable({ sheet }) {
     }
   };
 
-  // -----------------------------
-  // COLUMN OPERATIONS
-  // -----------------------------
+  /*
+   * -----------------------------
+   * COLUMN OPERATIONS
+   * -----------------------------
+   */
 
   const handleStartColumnEdit = (columnIndex) => {
     setEditingColumn(columnIndex);
@@ -160,24 +264,26 @@ function SheetTable({ sheet }) {
 
     if (!trimmedName) {
       setError("Column name cannot be empty.");
+      setSuccess("");
       return;
     }
 
     const duplicate = columns.some(
       (column, index) =>
         index !== columnIndex &&
-        column.toLowerCase() === trimmedName.toLowerCase()
+        column.toLowerCase() === trimmedName.toLowerCase(),
     );
 
     if (duplicate) {
       setError("Column name must be unique.");
+      setSuccess("");
       return;
     }
 
     const oldColumnName = columns[columnIndex];
 
     const updatedColumns = columns.map((column, index) =>
-      index === columnIndex ? trimmedName : column
+      index === columnIndex ? trimmedName : column,
     );
 
     const updatedRows = rows.map((row) => {
@@ -199,7 +305,10 @@ function SheetTable({ sheet }) {
 
     setEditingColumn(null);
     setColumnName("");
+
     clearMessages();
+
+    scheduleAutosave(updatedColumns, updatedRows);
   };
 
   const handleAddColumn = () => {
@@ -207,57 +316,61 @@ function SheetTable({ sheet }) {
 
     if (!trimmedName) {
       setError("Column name is required.");
+      setSuccess("");
       return;
     }
 
     const duplicate = columns.some(
-      (column) =>
-        column.toLowerCase() === trimmedName.toLowerCase()
+      (column) => column.toLowerCase() === trimmedName.toLowerCase(),
     );
 
     if (duplicate) {
       setError("Column name must be unique.");
+      setSuccess("");
       return;
     }
 
-    setColumns((currentColumns) => [
-      ...currentColumns,
-      trimmedName,
-    ]);
+    const updatedColumns = [...columns, trimmedName];
 
-    setRows((currentRows) =>
-      currentRows.map((row) => ({
-        ...row,
-        [trimmedName]: "",
-      }))
-    );
+    const updatedRows = rows.map((row) => ({
+      ...row,
+      [trimmedName]: "",
+    }));
+
+    setColumns(updatedColumns);
+    setRows(updatedRows);
 
     setNewColumnName("");
+
     clearMessages();
+
+    scheduleAutosave(updatedColumns, updatedRows);
   };
 
   const handleDeleteColumn = (columnIndex) => {
     if (columns.length === 1) {
       setError("A sheet must have at least one column.");
+      setSuccess("");
       closeContextMenu();
       return;
     }
 
     const columnToDelete = columns[columnIndex];
 
-    setColumns((currentColumns) =>
-      currentColumns.filter(
-        (_, index) => index !== columnIndex
-      )
+    const updatedColumns = columns.filter(
+      (_, index) => index !== columnIndex,
     );
 
-    setRows((currentRows) =>
-      currentRows.map((row) => {
-        const updatedRow = { ...row };
-        delete updatedRow[columnToDelete];
-        return updatedRow;
-      })
-    );
+    const updatedRows = rows.map((row) => {
+      const updatedRow = { ...row };
+
+      delete updatedRow[columnToDelete];
+
+      return updatedRow;
+    });
+
+    setColumns(updatedColumns);
+    setRows(updatedRows);
 
     if (editingColumn === columnIndex) {
       setEditingColumn(null);
@@ -266,24 +379,30 @@ function SheetTable({ sheet }) {
 
     clearMessages();
     closeContextMenu();
+
+    scheduleAutosave(updatedColumns, updatedRows);
   };
 
-  // -----------------------------
-  // COLUMN DRAG & DROP
-  // -----------------------------
+  /*
+   * -----------------------------
+   * COLUMN DRAG & DROP
+   * -----------------------------
+   */
 
   const handleColumnDragStart = (event, index) => {
     setDraggedColumnIndex(index);
 
     event.dataTransfer.effectAllowed = "move";
+
     event.dataTransfer.setData(
       "text/plain",
-      String(index)
+      String(index),
     );
   };
 
   const handleColumnDragOver = (event) => {
     event.preventDefault();
+
     event.dataTransfer.dropEffect = "move";
   };
 
@@ -303,13 +422,13 @@ function SheetTable({ sheet }) {
 
     const [movedColumn] = reorderedColumns.splice(
       draggedColumnIndex,
-      1
+      1,
     );
 
     reorderedColumns.splice(
       targetIndex,
       0,
-      movedColumn
+      movedColumn,
     );
 
     const reorderedRows = rows.map((row) => {
@@ -325,29 +444,39 @@ function SheetTable({ sheet }) {
     setColumns(reorderedColumns);
     setRows(reorderedRows);
     setDraggedColumnIndex(null);
+
     clearMessages();
+
+    scheduleAutosave(
+      reorderedColumns,
+      reorderedRows,
+    );
   };
 
   const handleColumnDragEnd = () => {
     setDraggedColumnIndex(null);
   };
 
-  // -----------------------------
-  // ROW DRAG & DROP
-  // -----------------------------
+  /*
+   * -----------------------------
+   * ROW DRAG & DROP
+   * -----------------------------
+   */
 
   const handleRowDragStart = (event, index) => {
     setDraggedRowIndex(index);
 
     event.dataTransfer.effectAllowed = "move";
+
     event.dataTransfer.setData(
       "text/plain",
-      String(index)
+      String(index),
     );
   };
 
   const handleRowDragOver = (event) => {
     event.preventDefault();
+
     event.dataTransfer.dropEffect = "move";
   };
 
@@ -367,83 +496,58 @@ function SheetTable({ sheet }) {
 
     const [movedRow] = reorderedRows.splice(
       draggedRowIndex,
-      1
+      1,
     );
 
     reorderedRows.splice(
       targetIndex,
       0,
-      movedRow
+      movedRow,
     );
 
     setRows(reorderedRows);
     setDraggedRowIndex(null);
+
     clearMessages();
+
+    scheduleAutosave(columns, reorderedRows);
   };
 
   const handleRowDragEnd = () => {
     setDraggedRowIndex(null);
   };
 
-  // -----------------------------
-  // SAVE
-  // -----------------------------
+  /*
+   * -----------------------------
+   * MANUAL SAVE
+   * -----------------------------
+   */
 
   const handleSaveChanges = async () => {
-    setIsSaving(true);
-    setError("");
-    setSuccess("");
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
 
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/sheets/${sheet._id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            columns,
-            rows,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to save sheet changes"
-        );
-      }
-
-      setColumns(data.sheet.columns || []);
-      setRows(data.sheet.rows || []);
-
-      setSuccess("Changes saved successfully.");
-    } catch (error) {
-      console.error("Save sheet error:", error);
-
-      setError(
-        error.message || "Failed to save sheet changes"
-      );
-    } finally {
-      setIsSaving(false);
+      autosaveTimerRef.current = null;
     }
+
+    await saveSheet(columns, rows);
   };
 
-  // -----------------------------
-  // TOTALS
-  // -----------------------------
+  /*
+   * -----------------------------
+   * TOTALS
+   * -----------------------------
+   */
 
   const calculateTotal = (columnName) => {
     return rows.reduce((total, row) => {
       const value = Number(
-        String(row[columnName] ?? "").replace(/,/g, "")
+        String(row[columnName] ?? "").replace(/,/g, ""),
       );
 
-      return Number.isFinite(value) ? total + value : total;
+      return Number.isFinite(value)
+        ? total + value
+        : total;
     }, 0);
   };
 
@@ -464,7 +568,40 @@ function SheetTable({ sheet }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* SAVE STATUS */}
+          <div className="mr-2 flex items-center">
+            {isSaving ? (
+              <span className="text-sm font-medium text-gray-500">
+                Saving...
+              </span>
+            ) : error ? (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-red-600">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100">
+                  !
+                </span>
+
+                Save failed
+              </span>
+            ) : success === "Saved" ? (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-bold">
+                  ✓
+                </span>
+
+                Saved
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-gray-500">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-xs">
+                  •
+                </span>
+
+                Unsaved changes
+              </span>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={handleAddRow}
@@ -510,16 +647,10 @@ function SheetTable({ sheet }) {
         </button>
       </div>
 
-      {/* MESSAGES */}
+      {/* ERROR MESSAGE */}
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
-          {success}
         </div>
       )}
 
@@ -539,20 +670,20 @@ function SheetTable({ sheet }) {
                   onContextMenu={(event) =>
                     handleColumnContextMenu(
                       event,
-                      columnIndex
+                      columnIndex,
                     )
                   }
                   onDragStart={(event) =>
                     handleColumnDragStart(
                       event,
-                      columnIndex
+                      columnIndex,
                     )
                   }
                   onDragOver={handleColumnDragOver}
                   onDrop={(event) =>
                     handleColumnDrop(
                       event,
-                      columnIndex
+                      columnIndex,
                     )
                   }
                   onDragEnd={handleColumnDragEnd}
@@ -570,7 +701,7 @@ function SheetTable({ sheet }) {
                         value={columnName}
                         onChange={(event) =>
                           setColumnName(
-                            event.target.value
+                            event.target.value,
                           )
                         }
                         autoFocus
@@ -578,7 +709,7 @@ function SheetTable({ sheet }) {
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
                             handleSaveColumnEdit(
-                              columnIndex
+                              columnIndex,
                             );
                           }
 
@@ -593,7 +724,7 @@ function SheetTable({ sheet }) {
                           type="button"
                           onClick={() =>
                             handleSaveColumnEdit(
-                              columnIndex
+                              columnIndex,
                             )
                           }
                           className="rounded bg-gray-900 px-2 py-1 text-xs text-white"
@@ -631,12 +762,15 @@ function SheetTable({ sheet }) {
                   onDragStart={(event) =>
                     handleRowDragStart(
                       event,
-                      rowIndex
+                      rowIndex,
                     )
                   }
                   onDragOver={handleRowDragOver}
                   onDrop={(event) =>
-                    handleRowDrop(event, rowIndex)
+                    handleRowDrop(
+                      event,
+                      rowIndex,
+                    )
                   }
                   onDragEnd={handleRowDragEnd}
                   className={`hover:bg-gray-50 ${
@@ -649,7 +783,7 @@ function SheetTable({ sheet }) {
                     onContextMenu={(event) =>
                       handleRowContextMenu(
                         event,
-                        rowIndex
+                        rowIndex,
                       )
                     }
                     className="border-b border-r border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-500"
@@ -678,7 +812,7 @@ function SheetTable({ sheet }) {
                           handleCellChange(
                             rowIndex,
                             columnName,
-                            event.target.value
+                            event.target.value,
                           )
                         }
                         className="w-full min-w-35 bg-transparent px-4 py-3 text-sm text-gray-700 outline-none focus:bg-gray-50"
@@ -721,13 +855,13 @@ function SheetTable({ sheet }) {
                   >
                     {columnName === "Income"
                       ? calculateTotal(
-                          "Income"
+                          "Income",
                         ).toLocaleString()
                       : columnName === "Expense"
-                      ? calculateTotal(
-                          "Expense"
-                        ).toLocaleString()
-                      : ""}
+                        ? calculateTotal(
+                            "Expense",
+                          ).toLocaleString()
+                        : ""}
                   </td>
                 ))}
               </tr>
@@ -737,6 +871,8 @@ function SheetTable({ sheet }) {
       </div>
 
       <p className="mt-3 text-xs text-gray-500">
+        Changes are automatically saved after 1.5 seconds.
+        You can also manually save using "Save Changes".
         Drag column headers left/right to reorder columns.
         Drag rows up/down to reorder rows. Right-click a
         column or row for available actions.
@@ -759,7 +895,7 @@ function SheetTable({ sheet }) {
                 type="button"
                 onClick={() =>
                   handleStartColumnEdit(
-                    contextMenu.index
+                    contextMenu.index,
                   )
                 }
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -771,7 +907,7 @@ function SheetTable({ sheet }) {
                 type="button"
                 onClick={() =>
                   handleDeleteColumn(
-                    contextMenu.index
+                    contextMenu.index,
                   )
                 }
                 className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
@@ -786,7 +922,9 @@ function SheetTable({ sheet }) {
               <button
                 type="button"
                 onClick={() =>
-                  handleEditRow(contextMenu.index)
+                  handleEditRow(
+                    contextMenu.index,
+                  )
                 }
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
               >
@@ -796,7 +934,9 @@ function SheetTable({ sheet }) {
               <button
                 type="button"
                 onClick={() =>
-                  handleDeleteRow(contextMenu.index)
+                  handleDeleteRow(
+                    contextMenu.index,
+                  )
                 }
                 className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               >
